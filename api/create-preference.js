@@ -1,12 +1,5 @@
 import { randomUUID } from 'node:crypto'
-
-const catalog = {
-  asiento: { title: 'Asiento oaxaqueno', unit_price: 95 },
-  chapulines: { title: 'Chapulines al chile', unit_price: 180 },
-  chorizo: { title: 'Chorizo oaxaqueno', unit_price: 150 },
-  mezcal: { title: 'Mezcal artesanal', unit_price: 595 },
-  quesillo: { title: 'Quesillo de hebra', unit_price: 145 },
-}
+import { catalog } from './catalog.js'
 
 function checkoutUrl(path = '') {
   const siteUrl = process.env.SITE_URL?.replace(/\/$/, '')
@@ -34,7 +27,7 @@ export default async function handler(request, response) {
   const items = Object.entries(quantities).map(([id, quantity]) => {
     const product = catalog[id]
     if (!product || quantity < 1 || quantity > 20) return null
-    return { ...product, quantity, currency_id: 'MXN' }
+    return { title: product.title, unit_price: product.unit_price, quantity, currency_id: 'MXN' }
   })
   if (items.includes(null)) return response.status(400).json({ message: 'El pedido contiene productos o cantidades invalidas.' })
 
