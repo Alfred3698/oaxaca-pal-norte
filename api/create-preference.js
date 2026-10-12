@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { catalog } from './catalog.js'
+import { catalog, shippingCost } from './catalog.js'
 
 function checkoutUrl(path = '') {
   const siteUrl = process.env.SITE_URL?.replace(/\/$/, '')
@@ -30,6 +30,7 @@ export default async function handler(request, response) {
     return { title: product.title, unit_price: product.unit_price, quantity, currency_id: 'MXN' }
   })
   if (items.includes(null)) return response.status(400).json({ message: 'El pedido contiene productos o cantidades invalidas.' })
+  items.push({ title: 'Envio', unit_price: shippingCost, quantity: 1, currency_id: 'MXN' })
 
   try {
     const mercadoPagoResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {

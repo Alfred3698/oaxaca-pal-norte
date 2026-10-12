@@ -1,4 +1,4 @@
-import { catalog } from './catalog.js'
+import { catalog, shippingCost } from './catalog.js'
 
 export default function handler(request, response) {
   if (request.method !== 'GET') return response.status(405).json({ message: 'Metodo no permitido.' })
@@ -12,5 +12,5 @@ export default function handler(request, response) {
     adult: product.adult ?? false,
     price: product.unit_price,
   }))
-  return response.status(200).json({ currency: 'MXN', products })
+  return response.status(200).json({ currency: 'MXN', shippingCost, products })
 }

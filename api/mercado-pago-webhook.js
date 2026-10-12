@@ -26,7 +26,13 @@ export default async function handler(request, response) {
       headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` },
     })
     const payment = await paymentResponse.json()
-    if (!paymentResponse.ok) return response.status(502).end()
+    if (!paymentResponse.ok) {
+      if (request.body?.live_mode === false && paymentResponse.status === 404) {
+        console.info('Webhook test received', { paymentId })
+        return response.status(200).end()
+      }
+      return response.status(502).end()
+    }
 
     if (payment.status === 'approved') {
       console.info('Payment approved', { paymentId: payment.id, reference: payment.external_reference })

@@ -1,3 +1,5 @@
+export const shippingCost = 200
+
 export const catalog = {
   asiento: { title: 'Asiento oaxaqueno', detail: 'Pasta de chile seco para guisos', image: '/products/asiento.png', unit: 'frasco', unit_price: 1 },
   chapulines: { title: 'Chapulines al chile', detail: 'Tostados, con limon y sal de gusano', image: '/products/chapulin.png', unit: '100 g', unit_price: 1 },
