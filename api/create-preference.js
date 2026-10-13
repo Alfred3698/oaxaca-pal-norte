@@ -6,6 +6,12 @@ function checkoutUrl(path = '') {
   return siteUrl ? `${siteUrl}${path}` : undefined
 }
 
+function checkoutPoint(preference) {
+  return process.env.MERCADO_PAGO_ENVIRONMENT === 'test'
+    ? preference.sandbox_init_point
+    : preference.init_point
+}
+
 function hasDeliveryDetails(customer) {
   const requiredFields = ['name', 'email', 'phone', 'address', 'city']
   return requiredFields.every((field) => typeof customer?.[field] === 'string' && customer[field].trim().length > 1)
@@ -61,10 +67,11 @@ export default async function handler(request, response) {
       }),
     })
     const preference = await mercadoPagoResponse.json()
-    if (!mercadoPagoResponse.ok || !preference.init_point) {
+    const initPoint = checkoutPoint(preference)
+    if (!mercadoPagoResponse.ok || !initPoint) {
       return response.status(502).json({ message: 'Mercado Pago no pudo iniciar el pago.' })
     }
-    return response.status(200).json({ initPoint: preference.init_point })
+    return response.status(200).json({ initPoint })
   } catch {
     return response.status(502).json({ message: 'No fue posible conectar con Mercado Pago.' })
   }
