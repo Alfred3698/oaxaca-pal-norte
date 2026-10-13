@@ -1,4 +1,4 @@
-export const shippingCost = 0.5
+export const shippingCost = 200
 
 export const catalog = {
   asiento: { title: 'Asiento oaxaqueno', detail: 'Pasta de chile seco para guisos', image: '/products/asiento.png', unit: 'frasco', unit_price: 1 },
