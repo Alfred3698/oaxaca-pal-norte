@@ -22,3 +22,32 @@ body { background:radial-gradient(circle at 80% 0%, #26352a 0, transparent 31rem
 .backdrop { background:rgba(2,5,3,.75); backdrop-filter:blur(3px); }.cart-panel,.checkout-modal { background:#171d1a; color:#ece3d4; border:1px solid #3b473d; box-shadow:-16px 0 44px rgba(0,0,0,.48); }.cart-head { border-bottom-color:#354137; }.cart-head button,.close-modal { color:#ecdfcb; }.cart-item { border-bottom-color:#354137; }.cart-item img { border:1px solid #3e4b40; }.cart-item h3 { color:#ece3d4; }.cart-item p { color:#a7b2a5; }.cart-item > strong,.cart-total strong { color:#e4b86e; }.quantity button { background:#202821; border-color:#465547; color:#ede4d5; }.cart-total { border-top:1px solid #354137; }.empty { color:#aab6a8; }.text-button { color:#e4b86e; }
 .checkout-modal { box-shadow:0 18px 65px rgba(0,0,0,.55); }.modal-description { color:#a9b6a7; }.test-checkout-note { background:#293526; color:#e9d7af; border-left:3px solid #d9994c; }.checkout-modal label { color:#d8d0c1; } .checkout-modal label span { color:#92a08f; } input,textarea { border-color:#465247; background:#0f1411; color:#f0e6d8; }.checkout-summary { border-top-color:#3b473d; }.payment-note { color:#94a192; }.notice { background:#38251d; color:#f2c69c; }.success svg { background:#9caf75; color:#172018; }
 @media (max-width:700px) { .hero { min-height:0; }.hero::before { background:linear-gradient(180deg, #111713 0%, rgba(17,23,19,.15) 100%); }.hero-art::after { background:linear-gradient(180deg, #111713 0%, transparent 45%); }.product-grid { gap:10px; }.product-card { border-radius:3px; } }
+
+.mezcal-guide { padding:110px clamp(20px,5vw,80px) 38px; background:radial-gradient(ellipse at 92% 8%, rgba(118,133,83,.14), transparent 32rem), #141a16; border-top:1px solid #303b32; }
+.mezcal-heading { display:grid; grid-template-columns:1fr minmax(260px,390px); align-items:end; gap:48px; max-width:1320px; margin:0 auto 48px; }
+.mezcal-heading h2 { margin:0; color:#f3eadb; font:600 clamp(40px,5.4vw,68px)/1.02 var(--display); }
+.mezcal-heading h2 i { color:#a8b783; font-weight:500; }
+.mezcal-heading > p { margin:0 0 5px; color:#a9b4a7; font-size:14px; line-height:1.8; }
+.agave-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; max-width:1320px; margin:0 auto; }
+.agave-card { min-width:0; overflow:hidden; background:#1b231e; border:1px solid #344237; }
+.agave-card > img { display:block; width:100%; height:clamp(185px,21vw,280px); object-fit:cover; filter:saturate(.76) brightness(.82); transition:filter .3s,transform .5s; }
+.agave-card:hover > img { filter:saturate(.95) brightness(.98); transform:scale(1.025); }
+.agave-copy { position:relative; padding:23px 21px 25px; }
+.agave-index,.maturation article > span { color:#d4a65d; font:500 10px var(--mono); letter-spacing:1px; }
+.agave-copy h3 { margin:13px 0 2px; color:#f1e8d9; font:600 27px/1.15 var(--display); }
+.agave-copy .scientific { margin:0 0 14px; color:#a8b783; font:italic 12px var(--sans); }
+.agave-copy p:last-child { margin:0; color:#b0baad; font-size:12px; line-height:1.75; }
+.agave-note { max-width:1320px; margin:18px auto 0; color:#849184; font-size:11px; line-height:1.6; }
+.maturation { display:grid; grid-template-columns:1.15fr repeat(3,1fr); gap:0; max-width:1320px; margin:78px auto 0; border-top:1px solid #455247; border-bottom:1px solid #455247; }
+.maturation-heading,.maturation article { padding:31px 25px 30px; }
+.maturation-heading { padding-left:0; }
+.maturation-heading h3 { margin:0; color:#f3eadb; font:600 32px/1.1 var(--display); }
+.maturation article { border-left:1px solid #344137; }
+.maturation article h4 { margin:14px 0 8px; color:#f0e7d8; font:600 21px var(--display); }
+.maturation article p { margin:0; color:#aab5a8; font-size:11px; line-height:1.75; }
+.maturation-footnote { grid-column:2 / -1; margin:0; padding:0 25px 25px; color:#889687; font-size:10px; line-height:1.6; }
+.image-credits { max-width:1320px; margin:24px auto 0; color:#788679; font-size:10px; line-height:1.8; }
+.image-credits a { color:#a9b783; text-decoration:underline; text-underline-offset:3px; }
+@media (max-width:1000px) { .agave-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.agave-card > img { height:260px; }.maturation { grid-template-columns:repeat(3,1fr); }.maturation-heading { grid-column:1 / -1; padding:30px 0; }.maturation article:first-of-type { border-left:0; }.maturation-footnote { grid-column:1 / -1; padding:20px 0 25px; } }
+@media (max-width:700px) { .mezcal-guide { padding:72px 20px 30px; }.mezcal-heading { display:block; margin-bottom:30px; }.mezcal-heading > p { margin-top:18px; }.agave-grid { gap:10px; }.agave-card > img { height:190px; }.agave-copy { padding:17px 14px 19px; }.agave-copy h3 { font-size:23px; }.agave-copy p:last-child { font-size:11px; }.maturation { grid-template-columns:1fr; margin-top:52px; }.maturation-heading { grid-column:auto; }.maturation article,.maturation article:first-of-type { padding:22px 0; border-left:0; border-top:1px solid #344137; }.maturation article h4 { margin-top:8px; }.maturation-footnote { grid-column:auto; padding:18px 0 22px; border-top:1px solid #344137; } }
+@media (max-width:390px) { .agave-grid { grid-template-columns:1fr; }.agave-card > img { height:235px; } }
