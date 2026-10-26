@@ -101,7 +101,7 @@ export default async function handler(request, response) {
       console.log('Backoffice order registration failed', {
         orderId,
         url: orderResponse.url,
-        payload: order,
+        payload: JSON.stringify(order),
         status: orderResponse.status,
         statusText: orderResponse.statusText,
         response: errorDetails,
