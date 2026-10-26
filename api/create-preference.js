@@ -86,6 +86,7 @@ export default async function handler(request, response) {
     shippingCity: customer.city.trim(),
     shippingState: customer.state.trim(),
     shippingPostalCode: customer.postalCode.trim(),
+    deliveryNotes: typeof customer.notes === 'string' ? customer.notes.trim() : '',
     currency: 'MXN',
     subtotal,
     shippingAmount: shippingCost,
@@ -100,6 +101,7 @@ export default async function handler(request, response) {
       console.log('Backoffice order registration failed', {
         orderId,
         url: orderResponse.url,
+        payload: order,
         status: orderResponse.status,
         statusText: orderResponse.statusText,
         response: errorDetails,
