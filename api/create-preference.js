@@ -45,8 +45,18 @@ export default async function handler(request, response) {
   }
 
   const { cart, customer } = request.body ?? {}
-  if (!Array.isArray(cart) || cart.length === 0 || !hasDeliveryDetails(customer)) {
-    return response.status(400).json({ message: 'Completa el carrito y los datos de entrega.' })
+  if (!Array.isArray(cart) || cart.length === 0) {
+    return response.status(400).json({ message: 'El carrito esta vacio o no es valido.' })
+  }
+  const requiredCustomerFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'postalCode']
+  const missingCustomerFields = requiredCustomerFields.filter((field) => (
+    typeof customer?.[field] !== 'string' || customer[field].trim().length <= 1
+  ))
+  if (missingCustomerFields.length > 0) {
+    return response.status(400).json({
+      message: 'Completa los datos de entrega requeridos.',
+      missingFields: missingCustomerFields,
+    })
   }
 
   const quantities = cart.reduce((total, { id, quantity }) => {
@@ -115,7 +125,7 @@ export default async function handler(request, response) {
     if (!mercadoPagoResponse.ok || !initPoint) {
       return response.status(502).json({ message: 'Mercado Pago no pudo iniciar el pago.' })
     }
-    return response.status(200).json({ initPoint })
+    return response.status(200).json({ initPoint, orderId, preferenceId: preference.id })
   } catch {
     return response.status(502).json({ message: 'No fue posible registrar el pedido o conectar con Mercado Pago.' })
   }
