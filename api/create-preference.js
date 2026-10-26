@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHmac, randomUUID } from 'node:crypto'
 import { catalog, shippingCost } from './catalog.js'
 
 function checkoutUrl(path = '') {
@@ -13,13 +13,36 @@ function checkoutPoint(preference) {
 }
 
 function hasDeliveryDetails(customer) {
-  const requiredFields = ['name', 'email', 'phone', 'address', 'city']
+  const requiredFields = ['name', 'email', 'phone', 'address', 'city', 'state', 'postalCode']
   return requiredFields.every((field) => typeof customer?.[field] === 'string' && customer[field].trim().length > 1)
+}
+
+async function registerOrder(order) {
+  const backofficeUrl = process.env.BACKOFFICE_URL?.replace(/\/$/, '')
+  const secret = process.env.OAXACA_PAL_NORTE_API_SECRET
+  if (!backofficeUrl || !secret) throw new Error('Falta configurar el servicio de pedidos.')
+
+  const body = JSON.stringify(order)
+  const timestamp = String(Math.floor(Date.now() / 1000))
+  const signature = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex')
+  return fetch(`${backofficeUrl}/oaxaca-pal-norte/orders`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-oaxaca-timestamp': timestamp,
+      'x-oaxaca-signature': signature,
+    },
+    body,
+    signal: AbortSignal.timeout(10000),
+  })
 }
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') return response.status(405).json({ message: 'Metodo no permitido.' })
   if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) return response.status(500).json({ message: 'Falta configurar Mercado Pago.' })
+  if (!process.env.BACKOFFICE_URL || !process.env.OAXACA_PAL_NORTE_API_SECRET) {
+    return response.status(500).json({ message: 'Falta configurar el servicio de pedidos.' })
+  }
 
   const { cart, customer } = request.body ?? {}
   if (!Array.isArray(cart) || cart.length === 0 || !hasDeliveryDetails(customer)) {
@@ -36,9 +59,37 @@ export default async function handler(request, response) {
     return { title: product.title, unit_price: product.unit_price, quantity, currency_id: 'MXN' }
   })
   if (items.includes(null)) return response.status(400).json({ message: 'El pedido contiene productos o cantidades invalidas.' })
-  items.push({ title: 'Envio', unit_price: shippingCost, quantity: 1, currency_id: 'MXN' })
+  const orderItems = Object.entries(quantities).map(([id, quantity]) => ({
+    productId: id,
+    productTitle: catalog[id].title,
+    quantity,
+    unitPrice: catalog[id].unit_price,
+  }))
+  const subtotal = orderItems.reduce((total, item) => total + item.unitPrice * item.quantity, 0)
+  const orderId = randomUUID()
+  const order = {
+    orderId,
+    customerName: customer.name.trim(),
+    customerEmail: customer.email.trim(),
+    customerPhone: customer.phone.trim(),
+    shippingAddress: customer.address.trim(),
+    shippingCity: customer.city.trim(),
+    shippingState: customer.state.trim(),
+    shippingPostalCode: customer.postalCode.trim(),
+    currency: 'MXN',
+    subtotal,
+    shippingAmount: shippingCost,
+    totalAmount: subtotal + shippingCost,
+    items: orderItems,
+  }
 
   try {
+    const orderResponse = await registerOrder(order)
+    if (!orderResponse.ok) {
+      return response.status(502).json({ message: 'No fue posible registrar el pedido.' })
+    }
+
+    items.push({ title: 'Envio', unit_price: shippingCost, quantity: 1, currency_id: 'MXN' })
     const mercadoPagoResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: {
@@ -47,15 +98,8 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({
         items,
-        external_reference: randomUUID(),
+        external_reference: orderId,
         payer: { email: customer.email.trim() },
-        metadata: {
-          customer_name: customer.name.trim(),
-          customer_phone: customer.phone.trim(),
-          delivery_address: customer.address.trim(),
-          delivery_city: customer.city.trim(),
-          delivery_notes: typeof customer.notes === 'string' ? customer.notes.trim() : '',
-        },
         back_urls: checkoutUrl('?payment_status=approved') ? {
           success: checkoutUrl('?payment_status=approved'),
           pending: checkoutUrl('?payment_status=pending'),
@@ -73,6 +117,6 @@ export default async function handler(request, response) {
     }
     return response.status(200).json({ initPoint })
   } catch {
-    return response.status(502).json({ message: 'No fue posible conectar con Mercado Pago.' })
+    return response.status(502).json({ message: 'No fue posible registrar el pedido o conectar con Mercado Pago.' })
   }
 }

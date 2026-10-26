@@ -1,5 +1,33 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
+async function notifyBackoffice(payment) {
+  const backofficeUrl = process.env.BACKOFFICE_URL?.replace(/\/$/, '')
+  const secret = process.env.OAXACA_PAL_NORTE_API_SECRET
+  if (!backofficeUrl || !secret) throw new Error('Falta configurar el servicio de pedidos.')
+
+  const orderId = payment.external_reference
+  if (typeof orderId !== 'string' || !orderId) throw new Error('El pago no tiene referencia de pedido.')
+
+  const body = JSON.stringify({
+    providerPaymentId: String(payment.id),
+    status: payment.status,
+    amount: payment.transaction_amount,
+    currency: payment.currency_id,
+  })
+  const timestamp = String(Math.floor(Date.now() / 1000))
+  const signature = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex')
+  return fetch(`${backofficeUrl}/oaxaca-pal-norte/orders/${encodeURIComponent(orderId)}/payment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-oaxaca-timestamp': timestamp,
+      'x-oaxaca-signature': signature,
+    },
+    body,
+    signal: AbortSignal.timeout(10000),
+  })
+}
+
 function signatureIsValid(request) {
   const signature = request.headers['x-signature']
   const requestId = request.headers['x-request-id']
@@ -19,6 +47,7 @@ function signatureIsValid(request) {
 export default async function handler(request, response) {
   if (request.method !== 'POST') return response.status(405).end()
   if (!signatureIsValid(request)) return response.status(401).end()
+  if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) return response.status(500).end()
 
   const paymentId = request.query['data.id'] ?? request.body?.data?.id
   try {
@@ -34,9 +63,8 @@ export default async function handler(request, response) {
       return response.status(502).end()
     }
 
-    if (payment.status === 'approved') {
-      console.info('Payment approved', { paymentId: payment.id, reference: payment.external_reference })
-    }
+    const backofficeResponse = await notifyBackoffice(payment)
+    if (!backofficeResponse.ok) return response.status(502).end()
     return response.status(200).end()
   } catch {
     return response.status(500).end()
