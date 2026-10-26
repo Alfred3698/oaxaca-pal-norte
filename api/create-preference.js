@@ -99,6 +99,7 @@ export default async function handler(request, response) {
       const errorDetails = (await orderResponse.text()).slice(0, 1000)
       console.log('Backoffice order registration failed', {
         orderId,
+        url: orderResponse.url,
         status: orderResponse.status,
         statusText: orderResponse.statusText,
         response: errorDetails,
