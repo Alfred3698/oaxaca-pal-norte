@@ -7,6 +7,14 @@ const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN
 
 function loadCart() {
   try {
+    const url = new URL(window.location.href)
+    if (['approved', 'pending', 'failure'].includes(url.searchParams.get('payment_status'))) {
+      localStorage.removeItem('oaxaca-cart')
+      url.searchParams.delete('payment_status')
+      window.history.replaceState(window.history.state, '', url)
+      return []
+    }
+
     const savedCart = JSON.parse(localStorage.getItem('oaxaca-cart') || '[]')
     if (!Array.isArray(savedCart)) return []
     return savedCart.filter(({ id, quantity }) => typeof id === 'string' && Number.isInteger(quantity) && quantity > 0)

@@ -6,7 +6,12 @@ async function notifyBackoffice(payment) {
   if (!backofficeUrl || !secret) throw new Error('Falta configurar el servicio de pedidos.')
 
   const orderId = payment.external_reference
-  if (typeof orderId !== 'string' || !orderId) throw new Error('El pago no tiene referencia de pedido.')
+  if (typeof orderId !== 'string' || !orderId.trim()) throw new Error('El pago no tiene referencia de pedido.')
+  if (typeof payment.id !== 'number' && typeof payment.id !== 'string') throw new Error('El pago no tiene un ID valido.')
+  if (typeof payment.status !== 'string' || !payment.status) throw new Error('El pago no tiene un estado valido.')
+  if (!Number.isFinite(payment.transaction_amount) || typeof payment.currency_id !== 'string' || !payment.currency_id) {
+    throw new Error('El pago no tiene importe o moneda validos.')
+  }
 
   const body = JSON.stringify({
     providerPaymentId: String(payment.id),
@@ -16,7 +21,16 @@ async function notifyBackoffice(payment) {
   })
   const timestamp = String(Math.floor(Date.now() / 1000))
   const signature = createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex')
-  return fetch(`${backofficeUrl}/oaxaca-pal-norte/orders/${encodeURIComponent(orderId)}/payment`, {
+  const url = `${backofficeUrl}/oaxaca-pal-norte/orders/${encodeURIComponent(orderId)}/payment`
+  console.info('Updating backoffice order payment', {
+    orderId,
+    url,
+    providerPaymentId: String(payment.id),
+    status: payment.status,
+    amount: payment.transaction_amount,
+    currency: payment.currency_id,
+  })
+  const backofficeResponse = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -26,6 +40,19 @@ async function notifyBackoffice(payment) {
     body,
     signal: AbortSignal.timeout(10000),
   })
+  if (!backofficeResponse.ok) {
+    const errorDetails = (await backofficeResponse.text()).slice(0, 1000)
+    console.error('Backoffice payment update rejected', {
+      orderId,
+      url: backofficeResponse.url || url,
+      providerPaymentId: String(payment.id),
+      payload: body,
+      status: backofficeResponse.status,
+      statusText: backofficeResponse.statusText,
+      response: errorDetails,
+    })
+  }
+  return backofficeResponse
 }
 
 function signatureIsValid(request) {
@@ -50,6 +77,7 @@ export default async function handler(request, response) {
   if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) return response.status(500).end()
 
   const paymentId = request.query['data.id'] ?? request.body?.data?.id
+  let stage = 'fetch Mercado Pago payment'
   try {
     const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}` },
@@ -60,13 +88,31 @@ export default async function handler(request, response) {
         console.info('Webhook test received', { paymentId })
         return response.status(200).end()
       }
+      console.error('Mercado Pago payment lookup failed', {
+        paymentId,
+        status: paymentResponse.status,
+        statusText: paymentResponse.statusText,
+        response: JSON.stringify(payment).slice(0, 1000),
+      })
       return response.status(502).end()
     }
 
+    stage = 'update backoffice order payment'
     const backofficeResponse = await notifyBackoffice(payment)
     if (!backofficeResponse.ok) return response.status(502).end()
+    console.info('Backoffice order payment updated', {
+      orderId: payment.external_reference,
+      providerPaymentId: String(payment.id),
+      status: payment.status,
+    })
     return response.status(200).end()
-  } catch {
+  } catch (error) {
+    console.error('Mercado Pago webhook processing failed', {
+      stage,
+      paymentId,
+      name: error.name,
+      message: error.message,
+    })
     return response.status(500).end()
   }
 }
