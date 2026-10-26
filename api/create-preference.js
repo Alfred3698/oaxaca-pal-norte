@@ -96,6 +96,13 @@ export default async function handler(request, response) {
   try {
     const orderResponse = await registerOrder(order)
     if (!orderResponse.ok) {
+      const errorDetails = (await orderResponse.text()).slice(0, 1000)
+      console.log('Backoffice order registration failed', {
+        orderId,
+        status: orderResponse.status,
+        statusText: orderResponse.statusText,
+        response: errorDetails,
+      })
       return response.status(502).json({ message: 'No fue posible registrar el pedido.' })
     }
 
