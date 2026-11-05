@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowRight, Check, Minus, Plus, ShoppingBag, X } from 'lucide-react'
 import './styles.css'
@@ -23,6 +23,17 @@ function loadCart() {
   }
 }
 
+function BrandedProductImage({ src, alt, adult = false, compact = false }) {
+  return <div className={`branded-product-image${compact ? ' branded-product-image--compact' : ''}`}>
+    <img className="branded-product-image__photo" src={src} alt={alt}/>
+    {adult ? <span className="age-badge">+18</span> : null}
+    <span className="brand-stamp" aria-hidden="true">
+      <img src="/logo-oaxaca-pal-norte.png" alt=""/>
+      <span>Oaxaca<br/>pa'l Norte</span>
+    </span>
+  </div>
+}
+
 function App() {
   const [cart, setCart] = useState(loadCart)
   const [isCartOpen, setIsCartOpen] = useState(false)
@@ -32,8 +43,11 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [products, setProducts] = useState([])
   const [shippingCost, setShippingCost] = useState(null)
+  const [addedProduct, setAddedProduct] = useState(null)
+  const addedFeedbackTimer = useRef(null)
 
   useEffect(() => localStorage.setItem('oaxaca-cart', JSON.stringify(cart)), [cart])
+  useEffect(() => () => window.clearTimeout(addedFeedbackTimer.current), [])
   useEffect(() => {
     fetch('/api/catalog-prices')
       .then((response) => response.ok ? response.json() : Promise.reject())
@@ -58,6 +72,13 @@ function App() {
         .map((entry) => entry.id === id ? { ...entry, quantity: entry.quantity + amount } : entry)
         .filter((entry) => entry.quantity > 0)
     })
+  }
+
+  const addToCart = (id) => {
+    changeQuantity(id, 1)
+    window.clearTimeout(addedFeedbackTimer.current)
+    setAddedProduct((current) => ({ id, sequence: (current?.sequence || 0) + 1 }))
+    addedFeedbackTimer.current = window.setTimeout(() => setAddedProduct(null), 1100)
   }
 
   const submitOrder = async (event) => {
@@ -87,7 +108,7 @@ function App() {
     <header className="topbar">
       <a className="brand" href="#inicio" aria-label="Oaxaca pa'l Norte, inicio"><img src="/logo-oaxaca-pal-norte.png" alt=""/><span>Oaxaca pa'l Norte</span></a>
       <nav><a href="#catalogo">Tienda</a><a href="#mezcales">Mezcales</a><a href="#origen">Nuestro origen</a></nav>
-      <button className="cart-trigger" onClick={() => setIsCartOpen(true)} aria-label="Abrir carrito"><ShoppingBag size={19}/><span>Carrito</span><b>{itemCount}</b></button>
+      <button className="cart-trigger" onClick={() => setIsCartOpen(true)} aria-label="Abrir carrito"><ShoppingBag size={19}/><span>Carrito</span><b key={addedProduct?.sequence || 'cart-count'} className={addedProduct ? 'cart-count--bump' : ''}>{itemCount}</b></button>
     </header>
     <main id="inicio">
       <section className="hero">
@@ -97,11 +118,14 @@ function App() {
 
       <section className="catalog" id="catalogo">
         <div className="section-heading"><div><p className="eyebrow">La selección</p><h2>Del mercado,<br/>hasta tu puerta.</h2></div><p>Ingredientes con origen y oficio. Empacamos cada pedido para que llegue como debe llegar.</p></div>
-        <div className="product-grid">{products.map((product) => <article className="product-card" key={product.id}>
-          <div className="product-image"><img src={product.image} alt={product.name}/>{product.adult && <span>+18</span>}</div>
-          <div className="product-info"><div><h3>{product.name}</h3><p>{product.detail}</p></div><p className="unit">{product.unit}</p></div>
-          <div className="product-bottom"><strong>{Number.isFinite(product.price) ? money.format(product.price) : 'Cargando...'}</strong><button className="add-button" onClick={() => changeQuantity(product.id, 1)} aria-label={`Agregar ${product.name}`} disabled={!Number.isFinite(product.price)}><Plus size={17}/><span>Agregar</span></button></div>
-        </article>)}</div>
+        <div className="product-grid">{products.map((product) => {
+          const isAdded = addedProduct?.id === product.id
+          return <article className="product-card" key={product.id}>
+            <BrandedProductImage src={product.image} alt={product.name} adult={product.adult}/>
+            <div className="product-info"><div><h3>{product.name}</h3><p>{product.detail}</p></div><p className="unit">{product.unit}</p></div>
+            <div className="product-bottom"><strong>{Number.isFinite(product.price) ? money.format(product.price) : 'Cargando...'}</strong><button className={`add-button${isAdded ? ' add-button--added' : ''}`} onClick={() => addToCart(product.id)} aria-label={`Agregar ${product.name}`} disabled={!Number.isFinite(product.price)}><span key={isAdded ? addedProduct.sequence : 'idle'} className="add-button__content" aria-live="polite">{isAdded ? <><Check size={17}/><span>Agregado</span></> : <><Plus size={17}/><span>Agregar</span></>}</span></button></div>
+          </article>
+        })}</div>
       </section>
 
       <section className="mezcal-guide" id="mezcales" aria-labelledby="mezcal-title">
@@ -142,7 +166,7 @@ function App() {
     </main>
     <footer><a className="brand" href="#inicio"><img src="/logo-oaxaca-pal-norte.png" alt=""/><span>Oaxaca pa'l Norte</span></a><p>Sabores de origen. Envío al norte de México.</p></footer>
 
-    {isCartOpen && <aside className="cart-panel" aria-label="Carrito de compra"><div className="cart-head"><div><p className="eyebrow">Tu pedido</p><h2>La canasta</h2></div><button onClick={() => setIsCartOpen(false)} aria-label="Cerrar carrito"><X/></button></div>{cartItems.length === 0 ? <div className="empty"><ShoppingBag size={30}/><p>Tu canasta esta esperando algo rico.</p><button className="text-button" onClick={() => setIsCartOpen(false)}>Ver productos</button></div> : <><div className="cart-items">{cartItems.map((item) => <div className="cart-item" key={item.id}><img src={item.image} alt=""/><div><h3>{item.name}</h3><p>{money.format(item.price)}</p><div className="quantity"><button onClick={() => changeQuantity(item.id, -1)} aria-label={`Quitar ${item.name}`}><Minus size={14}/></button><span>{item.quantity}</span><button onClick={() => changeQuantity(item.id, 1)} aria-label={`Agregar ${item.name}`}><Plus size={14}/></button></div></div><strong>{money.format(item.price * item.quantity)}</strong></div>)}</div><div className="shipping-line"><span>Subtotal productos</span><strong>{money.format(itemsTotal)}</strong></div><div className="shipping-line"><span>Envio</span><strong>{money.format(shippingTotal)}</strong></div><div className="cart-total"><span>Total</span><strong>{money.format(total)}</strong></div><button className="button checkout" onClick={() => { setIsCartOpen(false); setCheckoutOpen(true) }}>Continuar con entrega <ArrowRight size={18}/></button></>}</aside>}
+    {isCartOpen && <aside className="cart-panel" aria-label="Carrito de compra"><div className="cart-head"><div><p className="eyebrow">Tu pedido</p><h2>La canasta</h2></div><button onClick={() => setIsCartOpen(false)} aria-label="Cerrar carrito"><X/></button></div>{cartItems.length === 0 ? <div className="empty"><ShoppingBag size={30}/><p>Tu canasta esta esperando algo rico.</p><button className="text-button" onClick={() => setIsCartOpen(false)}>Ver productos</button></div> : <><div className="cart-items">{cartItems.map((item) => <div className="cart-item" key={item.id}><BrandedProductImage src={item.image} alt={item.name} adult={item.adult} compact/><div className="cart-item__details"><h3>{item.name}</h3><p>{money.format(item.price)}</p><div className="quantity"><button onClick={() => changeQuantity(item.id, -1)} aria-label={`Quitar ${item.name}`}><Minus size={14}/></button><span>{item.quantity}</span><button onClick={() => changeQuantity(item.id, 1)} aria-label={`Agregar ${item.name}`}><Plus size={14}/></button></div></div><strong>{money.format(item.price * item.quantity)}</strong></div>)}</div><div className="shipping-line"><span>Subtotal productos</span><strong>{money.format(itemsTotal)}</strong></div><div className="shipping-line"><span>Envio</span><strong>{money.format(shippingTotal)}</strong></div><div className="cart-total"><span>Total</span><strong>{money.format(total)}</strong></div><button className="button checkout" onClick={() => { setIsCartOpen(false); setCheckoutOpen(true) }}>Continuar con entrega <ArrowRight size={18}/></button></>}</aside>}
     {(isCartOpen || checkoutOpen) && <button className="backdrop" aria-label="Cerrar" onClick={() => { setIsCartOpen(false); setCheckoutOpen(false) }}/>} 
     {checkoutOpen && <dialog open className="checkout-modal" aria-labelledby="delivery-title"><button className="close-modal" onClick={() => setCheckoutOpen(false)} aria-label="Cerrar"><X/></button>{completed ? <div className="success"><Check size={36}/><p className="eyebrow">Pedido preparado</p><h2>Gracias por elegir Oaxaca.</h2><p>Recibimos tus datos. Al confirmar el pago o mensaje, coordinaremos tu entrega.</p><button className="button" onClick={() => { setCart([]); setCheckoutOpen(false); setCompleted(false) }}>Volver a la tienda</button></div> : <><p className="eyebrow">Paso final</p><h2 id="delivery-title">Datos de entrega</h2><p className="modal-description">Completa tus datos antes de continuar con el pago.</p><p className="test-checkout-note">Modo de prueba: productos a $1.00 MXN; el envio se calcula en el servidor.</p><form onSubmit={submitOrder}><label>Nombre completo<input required name="name" autoComplete="name"/></label><label>Correo electronico<input required type="email" name="email" autoComplete="email"/></label><label>Telefono<input required type="tel" name="phone" autoComplete="tel"/></label><label>Direccion completa<textarea required name="address" rows="2" autoComplete="street-address"/></label><label>Ciudad<input required name="city" autoComplete="address-level2"/></label><label>Estado<input required name="state" autoComplete="address-level1"/></label><label>Codigo postal<input required name="postalCode" autoComplete="postal-code" inputMode="numeric"/></label><label>Notas de entrega <span>(opcional)</span><textarea name="notes" rows="2"/></label>{notice && <p className="notice">{notice}</p>}<div className="shipping-line"><span>Subtotal productos</span><strong>{money.format(itemsTotal)}</strong></div><div className="shipping-line"><span>Envio</span><strong>{money.format(shippingTotal)}</strong></div><div className="checkout-summary"><span>Total del pedido</span><strong>{money.format(total)}</strong></div><button className="button checkout" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Abriendo Mercado Pago...' : <>Continuar al pago <ArrowRight size={18}/></>}</button><p className="payment-note">Seras redirigido a Mercado Pago para realizar un pago seguro.</p></form></>}</dialog>}
   </>
